@@ -37,9 +37,15 @@ def createContainer(container_name, container_command, container_image_name, por
                 port_array[items[2] + '/tcp'] = (items[0], int(items[1]))
             else:
                 port_array[items[1] + '/tcp'] = int(items[0])
-    container_volume_bindings = ''
+    container_volume_bindings = []
     if volume_path:
-        container_volume_bindings = [container_name + ":" + volume_path]
+        x = 0
+        for volume in volume_path:
+            if not x:
+                container_volume_bindings.append(container_name + ":" + volume)
+            else:
+                container_volume_bindings.append(container_name + "_" + str(x) + ":" + volume)
+            x += 1
     if not container_name or not container_image_name:
         print("Required parameters missing")
         sys.exit(2)
@@ -72,7 +78,7 @@ def main():
     image_name = ''
     name = ''
     single = 0
-    volume_path = ''
+    volume_path = []
     if not opts:
         showHelp()
         sys.exit(2)
@@ -92,7 +98,7 @@ def main():
         if opt in ('-s', '--single'):
             single = 1;
         if opt in ('-v', '--volume'):
-            volume_path = arg;
+            volume_path.append(arg);
     if action == 'upgrade':
         upgradeContainers(name, single)
     if action == 'create':
