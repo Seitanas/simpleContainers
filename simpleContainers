@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+
+'''
+simpleContainers
+Tadas Ustinavičius
+
+Vilnius, Lithuania
+2017-06-20
+'''
+
+import docker
+import sys, getopt
+
+client = docker.from_env()
+
+
+
+
+def showHelp():
+    print ("""\nUsage: simpleContainers COMMAND\n\n  -a --action=    Choose action for a container (create, upgrade)
+  -c --command=   Runs command on container startup
+  -h              Prints help
+  -i --image=     (required for creating new container) Image name to start container from
+  -n --name=      (required) Specify name of container. Will use wildcard in the end of name for upgrade action
+  -s --single     used together with --upgrade. Will upgrade only first container which matches --name
+  -p --portmap=   Specify ports to be mapped from host to container ([HOSTADDR:]HOSTPORT:CONTAINERPORT)
+  -v --volume=    If specified, SimpleContainers will create named volume and mount it inside container
+                  on [-v]--volume path. \n\n""")
+
+def createContainer(container_name, container_command,  container_image_name, port_maps, volume_path):
+    port_array = {}
+    if port_maps:
+        for port_map in port_maps:
+            items = port_map.split(':')
+            if len(items) == 3: # was the host address specified?
+                port_array[items[2] + '/tcp'] = (items[0], int(items[1]))
+            else:
+                port_array[items[1] + '/tcp'] = int(items[0])
+    container_volume_bindings = ''
+    if volume_path:
+        container_volume_bindings = [container_name + ":" + volume_path]
+    if not container_name or not container_image_name:
+        print("Required parameters missing")
+        sys.exit(2)
+    client.containers.run(command = container_command, image = container_image_name, name = container_name, ports = port_array, volumes = container_volume_bindings, tty = True, detach = True)
+
+def upgradeContainers(name, single):
+    containers = client.containers.list(filters={"name": name}, all = True)
+    for container in containers:
+        container_image = container.attrs['Config']['Image']
+        container_volume_bindings = container.attrs['HostConfig']['Binds']
+        container_port_bindings = container.attrs['HostConfig']['PortBindings']
+        container_name  = container.attrs['Name']
+        container.remove(force = True)
+        client.containers.run(image = container_image, name = container_name, ports = container_port_bindings, volumes = container_volume_bindings, detach = True)
+        if single:
+            sys.exit(0)
+
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],"sha:c:i:n:p:v:",["action=", "command=", "image=", "name=", "portmap=", "single", "volume="])
+    except getopt.GetoptError:
+        showHelp()
+        sys.exit(2)
+    port_maps = []
+    action = ''
+    command = ''
+    image_name = ''
+    name = ''
+    single = 0
+    volume_path = ''
+    if not opts:
+        showHelp()
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            showHelp()
+        if opt in ('-p', '--portmap'):
+            port_maps.append(arg)
+        if opt in ('-a', '--action'):
+            action = arg
+        if opt in ('-c', '--command'):
+            command = arg
+        if opt in ('-i', '--image'):
+            image_name = arg
+        if opt in ('-n', '--name'):
+            name = arg
+        if opt in ('-s', '--single'):
+            single = 1;
+        if opt in ('-v', '--volume'):
+            volume_path = arg;
+    if action == 'upgrade':
+        upgradeContainers(name, single)
+    if action == 'create':
+        createContainer(name, command, image_name, port_maps, volume_path)
+    sys.exit()
+
+if __name__ == '__main__':
+    main()
+
+
+
