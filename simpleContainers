@@ -28,7 +28,7 @@ def showHelp():
   -v --volume=    If specified, SimpleContainers will create named volume and mount it inside container
                   on [-v]--volume path. \n\n""")
 
-def createContainer(container_name, container_command,  container_image_name, port_maps, volume_path):
+def createContainer(container_name, container_command, container_image_name, port_maps, volume_path):
     port_array = {}
     if port_maps:
         for port_map in port_maps:
@@ -43,17 +43,20 @@ def createContainer(container_name, container_command,  container_image_name, po
     if not container_name or not container_image_name:
         print("Required parameters missing")
         sys.exit(2)
-    client.containers.run(command = container_command, image = container_image_name, name = container_name, ports = port_array, volumes = container_volume_bindings, tty = True, detach = True)
+    container_obj = client.containers.run(command = container_command, image = container_image_name, name = container_name, ports = port_array, volumes = container_volume_bindings, tty = True, detach = True)
+    print ("New container id: " + container_obj.attrs['Config']['Hostname'])
 
 def upgradeContainers(name, single):
     containers = client.containers.list(filters={"name": name}, all = True)
     for container in containers:
+        print ("Upgrading container: " + name)
         container_image = container.attrs['Config']['Image']
         container_volume_bindings = container.attrs['HostConfig']['Binds']
         container_port_bindings = container.attrs['HostConfig']['PortBindings']
         container_name  = container.attrs['Name']
         container.remove(force = True)
-        client.containers.run(image = container_image, name = container_name, ports = container_port_bindings, volumes = container_volume_bindings, detach = True)
+        container_obj = client.containers.run(image = container_image, name = container_name, ports = container_port_bindings, volumes = container_volume_bindings, detach = True)
+        print ("New container id: " + container_obj.attrs['Config']['Hostname'])
         if single:
             sys.exit(0)
 
