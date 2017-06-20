@@ -8,8 +8,8 @@ Upgrade process preserves port mapping and persistent storage configuration.
 ### installation
 ***simpleContainers requires python3***
 
-`git clone https://github.com/Seitanas/simpleContainers`
-`pip install docker` 
+    git clone https://github.com/Seitanas/simpleContainers
+    pip install docker
   
 ### creating new container
 
