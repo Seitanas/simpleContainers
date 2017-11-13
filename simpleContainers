@@ -12,7 +12,7 @@ Vilnius, Lithuania
 import docker
 import sys, getopt
 
-client = docker.from_env()
+client = docker.from_env(version='auto')
 
 
 
