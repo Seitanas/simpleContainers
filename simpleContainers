@@ -49,7 +49,7 @@ def createContainer(container_name, container_command, container_image_name, por
     if not container_name or not container_image_name:
         print("Required parameters missing")
         sys.exit(2)
-    container_obj = client.containers.run(command = container_command, image = container_image_name, name = container_name, ports = port_array, volumes = container_volume_bindings, tty = True, detach = True)
+    container_obj = client.containers.run(command = container_command, image = container_image_name, name = container_name, ports = port_array, volumes = container_volume_bindings, tty = True, detach = True, restart_policy = {"Name": "unless-stopped"})
     print ("New container id: " + container_obj.attrs['Config']['Hostname'])
 
 def upgradeContainers(name, single):
@@ -61,7 +61,7 @@ def upgradeContainers(name, single):
         container_port_bindings = container.attrs['HostConfig']['PortBindings']
         container_name  = container.attrs['Name']
         container.remove(force = True)
-        container_obj = client.containers.run(image = container_image, name = container_name, ports = container_port_bindings, volumes = container_volume_bindings, detach = True)
+        container_obj = client.containers.run(image = container_image, name = container_name, ports = container_port_bindings, volumes = container_volume_bindings, detach = True, restart_policy = {"Name": "unless-stopped"})
         print ("New container id: " + container_obj.attrs['Config']['Hostname'])
         if single:
             sys.exit(0)
