@@ -10,30 +10,37 @@ Vilnius, Lithuania
 '''
 
 import docker
-import sys, getopt
+import getopt
+import sys
 
 client = docker.from_env(version='auto')
 
 
-
-
 def showHelp():
-    print ("""\nUsage: simpleContainers COMMAND\n\n  -a --action=    Choose action for a container (create, upgrade)
+    print("""\nUsage: simpleContainers COMMAND\n\n  -a --action=\
+    Choose action for a container (create, upgrade)
   -c --command=   Runs command on container startup
   -h              Prints help
-  -i --image=     (required for creating new container) Image name to start container from
-  -n --name=      (required) Specify name of container. Will use wildcard in the end of name for upgrade action
-  -s --single     used together with --upgrade. Will upgrade only first container which matches --name
-  -p --portmap=   Specify ports to be mapped from host to container ([HOSTADDR:]HOSTPORT:CONTAINERPORT)
-  -v --volume=    If specified, SimpleContainers will create named volume and mount it inside container
+  -i --image=     (required for creating new container)\
+    Image name to start container from
+  -n --name=      (required) Specify name of container.\
+    Will use wildcard in the end of name for upgrade action
+  -s --single     used together with --upgrade. Will upgrade\
+    only first container which matches --name
+  -p --portmap=   Specify ports to be mapped from host to container\
+    ([HOSTADDR:]HOSTPORT:CONTAINERPORT)
+  -v --volume=    If specified, SimpleContainers will create named\
+    volume and mount it inside container
                   on [-v]--volume path. \n\n""")
 
-def createContainer(container_name, container_command, container_image_name, port_maps, volume_path):
+
+def createContainer(container_name, container_command,
+                    container_image_name, port_maps, volume_path):
     port_array = {}
     if port_maps:
         for port_map in port_maps:
             items = port_map.split(':')
-            if len(items) == 3: # was the host address specified?
+            if len(items) == 3:  # was the host address specified?
                 port_array[items[2] + '/tcp'] = (items[0], int(items[1]))
             else:
                 port_array[items[1] + '/tcp'] = int(items[0])
@@ -44,31 +51,57 @@ def createContainer(container_name, container_command, container_image_name, por
             if not x:
                 container_volume_bindings.append(container_name + ":" + volume)
             else:
-                container_volume_bindings.append(container_name + "_" + str(x) + ":" + volume)
+                container_volume_bindings.append(container_name + "_" +
+                                                 str(x) + ":" + volume)
             x += 1
     if not container_name or not container_image_name:
         print("Required parameters missing")
         sys.exit(2)
-    container_obj = client.containers.run(command = container_command, image = container_image_name, name = container_name, ports = port_array, volumes = container_volume_bindings, tty = True, detach = True, restart_policy = {"Name": "unless-stopped"})
-    print ("New container id: " + container_obj.attrs['Config']['Hostname'])
+    container_obj = client.containers.run(command=container_command,
+                                          image=container_image_name,
+                                          name=container_name,
+                                          ports=port_array,
+                                          volumes=container_volume_bindings,
+                                          tty=True, detach=True,
+                                          restart_policy={"Name":
+                                                          "unless-stopped"})
+    print("New container id: " + container_obj.attrs['Config']['Hostname'])
+
 
 def upgradeContainers(name, single):
-    containers = client.containers.list(filters={"name": name}, all = True)
+    containers = client.containers.list(filters={"name": name}, all=True)
     for container in containers:
-        print ("Upgrading container: " + name)
+        print("Upgrading container: " + name)
         container_image = container.attrs['Config']['Image']
         container_volume_bindings = container.attrs['HostConfig']['Binds']
         container_port_bindings = container.attrs['HostConfig']['PortBindings']
-        container_name  = container.attrs['Name']
-        container.remove(force = True)
-        container_obj = client.containers.run(image = container_image, name = container_name, ports = container_port_bindings, volumes = container_volume_bindings, detach = True, restart_policy = {"Name": "unless-stopped"})
-        print ("New container id: " + container_obj.attrs['Config']['Hostname'])
+        container_name = container.attrs['Name']
+        container.remove(force=True)
+        container_obj = client.containers.run(
+                            image=container_image,
+                            name=container_name,
+                            ports=container_port_bindings,
+                            volumes=container_volume_bindings,
+                            detach=True,
+                            restart_policy={"Name":
+                                            "unless-stopped"})
+        print("New container id: " + container_obj.attrs['Config']['Hostname'])
         if single:
             sys.exit(0)
 
+
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"sha:c:i:n:p:v:",["action=", "command=", "image=", "name=", "portmap=", "single", "volume="])
+        opts, args = getopt.getopt(
+                        sys.argv[1:],
+                        "sha:c:i:n:p:v:",
+                        ["action=",
+                         "command=",
+                         "image=",
+                         "name=",
+                         "portmap=",
+                         "single",
+                         "volume="])
     except getopt.GetoptError:
         showHelp()
         sys.exit(2)
@@ -96,17 +129,15 @@ def main():
         if opt in ('-n', '--name'):
             name = arg
         if opt in ('-s', '--single'):
-            single = 1;
+            single = 1
         if opt in ('-v', '--volume'):
-            volume_path.append(arg);
+            volume_path.append(arg)
     if action == 'upgrade':
         upgradeContainers(name, single)
     if action == 'create':
         createContainer(name, command, image_name, port_maps, volume_path)
     sys.exit()
 
+
 if __name__ == '__main__':
     main()
-
-
-
